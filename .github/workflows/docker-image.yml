@@ -1,0 +1,155 @@
+# name: Docker Image CI
+
+# on:
+#   push:
+#     branches: [ "main" ]
+#   pull_request:
+#     branches: [ "main" ]
+
+# jobs:
+
+#   build:
+
+#     runs-on: ubuntu-latest
+
+#     steps:
+#     - uses: actions/checkout@v4
+#     - name: Build the Docker image
+#       run: docker build . --file Dockerfile --tag my-image-name:$(date +%s)
+
+name: Docker Image CI
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Generate Dockerfiles and docker-compose.yml
+      run: |
+        # Chemin du répertoire du projet
+        PROJECT_DIR="."
+
+        # Créer un Dockerfile pour un service Spring Boot
+        create_dockerfile() {
+          SERVICE_DIR=$1
+          SERVICE_NAME=$2
+          cat <<EOL > $SERVICE_DIR/Dockerfile
+# Utiliser une image de base Maven pour la compilation
+FROM maven:3.8.4-openjdk-17 AS build
+WORKDIR /app
+COPY . .
+RUN mvn clean package -DskipTests
+
+# Utiliser une image de base Java pour l'exécution
+FROM openjdk:17-jdk-slim
+COPY --from=build /app/target/${SERVICE_NAME}-0.0.1-SNAPSHOT.jar ${SERVICE_NAME}-service.jar
+EXPOSE 8080
+ENTRYPOINT ["java", "-jar", "${SERVICE_NAME}-service.jar"]
+EOL
+        }
+
+        # Créer un Dockerfile pour l'application React
+        create_react_dockerfile() {
+          cat <<EOL > $PROJECT_DIR/Frontend/Dockerfile
+# Utiliser une image de base Node.js
+FROM node:14-alpine
+WORKDIR /app
+COPY package*.json ./
+RUN npm install
+COPY . .
+RUN npm run build
+RUN npm install -g serve
+EXPOSE 3000
+CMD ["serve", "-s", "build", "-l", "3000"]
+EOL
+        }
+
+        # Créer un fichier docker-compose.yml
+        create_docker_compose() {
+          cat <<EOL > $PROJECT_DIR/docker-compose.yml
+version: '3.8'
+
+services:
+  mongo:
+    image: mongo:4.4
+    container_name: mongo
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo-data:/data/db
+
+  auth-service:
+    build: ./Backend/Auth
+    container_name: auth-service
+    ports:
+      - "8080:8080"
+    environment:
+      - SPRING_DATA_MONGODB_URI=mongodb://mongo:27017/bezkoder_db
+      - BEZKODER_APP_JWT_COOKIE_NAME=bezkoder
+      - BEZKODER_APP_JWT_SECRET=BezKoderSpringSecret
+      - BEZKODER_APP_JWT_EXPIRATION_MS=86400000
+
+  road-service:
+    build: ./Backend/Road
+    container_name: road-service
+    ports:
+      - "8081:8081"
+    environment:
+      - GRAPH_HOPPER_URL=http://graphhopper:8989
+
+  graphhopper:
+    image: graphhopper/graphhopper:latest
+    container_name: graphhopper
+    volumes:
+      - ./Backend/Road/src/main/resources/static/ile-de-france-latest.osm.pbf:/data/ile-de-france-latest.osm.pbf
+    command: "./graphhopper.sh -a web -i /data/ile-de-france-latest.osm.pbf"
+    ports:
+      - "8989:8989"
+    environment:
+      JAVA_OPTS: "-Xmx2g -Xms2g"
+
+  frontend:
+    build: ./Frontend
+    container_name: frontend
+    ports:
+      - "3000:3000"
+
+  jmeter:
+    image: justb4/jmeter:5.4.1
+    container_name: jmeter
+    volumes:
+      - ./jmeter:/test
+    entrypoint: ["/entrypoint.sh"]
+    command: ["-n", "-t", "/test/test-plan.jmx", "-l", "/test/results.jtl", "-j", "/test/jmeter.log"]
+
+volumes:
+  mongo-data:
+EOL
+        }
+
+        # Créer les Dockerfiles pour les services Spring Boot
+        create_dockerfile $PROJECT_DIR/Backend/Auth auth
+        create_dockerfile $PROJECT_DIR/Backend/Road road
+
+        # Créer le Dockerfile pour l'application React
+        create_react_dockerfile
+
+        # Créer le fichier docker-compose.yml
+        create_docker_compose
+
+        echo "Fichiers Dockerfile et docker-compose.yml créés avec succès."
+
+    - name: Build the Docker images
+      run: |
+        docker build . -f ./Backend/Auth/Dockerfile -t auth-service:$(date +%s)
+        docker build . -f ./Backend/Road/Dockerfile -t road-service:$(date +%s)
+        docker build . -f ./Frontend/Dockerfile -t frontend:$(date +%s)
