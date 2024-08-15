@@ -1,0 +1,54 @@
+version: '3.8'
+
+services:
+  # Service MongoDB
+  mongo:
+    image: mongo:4.4
+    container_name: mongo
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo-data:/data/db
+
+  # Service Auth (Spring Boot)
+  auth-service:
+    build: ./backend/auth
+    container_name: auth-service
+    ports:
+      - "8080:8080"
+    environment:
+      - SPRING_DATA_MONGODB_URI=mongodb://mongo:27017/bezkoder_db
+      - SPRING_PROFILES_ACTIVE=docker
+    depends_on:
+      - mongo
+    networks:
+      - backend
+
+  # Service Road (Spring Boot)
+  road-service:
+    build: ./backend/road
+    container_name: road-service
+    ports:
+      - "8081:8081"
+    environment:
+      - GRAPH_HOPPER_URL=http://graphhopper:8989
+    depends_on:
+      - mongo
+    networks:
+      - backend
+
+  # Service Frontend (React)
+  frontend:
+    build: ./frontend
+    container_name: frontend
+    ports:
+      - "3000:3000"
+    networks:
+      - frontend
+
+networks:
+  backend:
+  frontend:
+
+volumes:
+  mongo-data:
