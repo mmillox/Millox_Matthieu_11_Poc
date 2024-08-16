@@ -1,10 +1,3 @@
-# FROM openjdk:11
-# VOLUME /tmp
-# EXPOSE 8081
-# ARG JAR_FILE=target/spring-boot-docker.jar
-# ADD ${JAR_FILE} app.jar
-# ENTRYPOINT ["java","-jar","/app.jar"]
-
 # Utiliser une image de base Maven pour la compilation
 FROM maven:3.8.4-openjdk-17 AS build
 WORKDIR /road/

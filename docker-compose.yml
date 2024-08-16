@@ -1,5 +1,3 @@
-# version: '3.8'
-
 services:
   # Service MongoDB
   mongo:
@@ -23,6 +21,7 @@ services:
       - mongo
     networks:
       - backend
+    entrypoint: /bin/sh -c "sleep 10 && java -jar auth-service.jar"
 
   # Service Road (Spring Boot)
   road-service:
