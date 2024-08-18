@@ -1,12 +1,17 @@
 services:
   # Service MongoDB
-  mongo:
+  mongodb:
     image: mongo:4.4
-    container_name: mongo
+    container_name: mongodb
     ports:
       - "27017:27017"
+    environment:
+      MONGO_INITDB_DATABASE: bezkoder_db
     volumes:
       - mongo-data:/data/db
+      - ./mongo-init:/docker-entrypoint-initdb.d:ro
+    networks:
+      - backend
 
   # Service Auth (Spring Boot)
   auth-service:
@@ -15,13 +20,11 @@ services:
     ports:
       - "8080:8080"
     environment:
-      - SPRING_DATA_MONGODB_URI=mongodb://mongo:27017/bezkoder_db
-      - SPRING_PROFILES_ACTIVE=docker
+      SPRING_DATA_MONGODB_URI: mongodb://mongodb:27017/bezkoder_db
     depends_on:
-      - mongo
+      - mongodb
     networks:
       - backend
-    entrypoint: /bin/sh -c "sleep 10 && java -jar auth-service.jar"
 
   # Service Road (Spring Boot)
   road-service:
@@ -31,8 +34,8 @@ services:
       - "8081:8081"
     environment:
       - GRAPH_HOPPER_URL=http://graphhopper:8989
-    depends_on:
-      - mongo
+    # depends_on:
+    #   - mongo
     networks:
       - backend
 
