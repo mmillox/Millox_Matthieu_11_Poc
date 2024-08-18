@@ -37,12 +37,12 @@ jobs:
 
       - name: Execute Maven Build for auth
         run: |
-          cd auth
+          cd backend/auth
           mvn clean package -DskipTests
 
       - name: Execute Maven Build for road
         run: |
-          cd road
+          cd backend/road
           mvn clean package -DskipTests
 
       - name: Store Production Artifacts
@@ -50,8 +50,8 @@ jobs:
         with:
           name: distribution
           path: |
-            auth/target/auth-0.0.1-SNAPSHOT.jar
-            road/target/road-0.0.1-SNAPSHOT.jar
+            backend/auth/target/auth-0.0.1-SNAPSHOT.jar
+            backend/road/target/road-0.0.1-SNAPSHOT.jar
 
   docker-build:
     runs-on: ubuntu-latest
@@ -62,10 +62,10 @@ jobs:
 
       - name: Build Docker image for auth
         run: |
-          cd auth
+          cd backend/auth
           docker build -t auth-service:latest -f Dockerfile .
 
       - name: Build Docker image for road
         run: |
-          cd road
+          cd backend/road
           docker build -t road-service:latest -f Dockerfile .
