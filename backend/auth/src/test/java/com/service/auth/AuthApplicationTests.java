@@ -1,6 +1,6 @@
 package com.service.auth;
 
-import com.service.auth.model.User;
+import com.service.auth.models.User;
 import com.service.auth.repository.UserRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
