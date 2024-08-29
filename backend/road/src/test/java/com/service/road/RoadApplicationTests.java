@@ -1,35 +1,41 @@
 package com.service.road;
 
-import com.service.road.controllers.RoadController;
-import com.service.road.services.RouteService;
+import com.graphhopper.GHRequest;
+import com.graphhopper.GHResponse;
+import com.graphhopper.GraphHopper;
+import com.graphhopper.config.Profile;
+import com.graphhopper.util.shapes.GHPoint;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
+import org.springframework.test.context.ActiveProfiles;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.mockito.Mockito.when;
+import static org.assertj.core.api.Assertions.assertThat;
 
 @SpringBootTest
+@ActiveProfiles("test")
 public class RoadApplicationTests {
 
-    @Mock
-    private RouteService routeService;
+    @Autowired
+    private GraphHopper graphHopper;
 
-    @InjectMocks
-    private RoadController roadController;
+    @BeforeEach
+    public void setup() {
+        graphHopper.setProfiles(new Profile("car").setVehicle("car").setWeighting("fastest"));
+        graphHopper.importOrLoad();
+    }
 
     @Test
-    void testGetRoute() {
-        String mockRoute = "Sample Route Data";
-        
-        when(routeService.getRoute(any(String.class), any(String.class))).thenReturn(mockRoute);
-        
-        ResponseEntity<?> response = roadController.getRoute("pointA", "pointB");
-        
-        assertEquals(HttpStatus.OK, response.getStatusCode());
-        assertEquals(mockRoute, response.getBody());
+    public void testRouteCalculation() {
+        GHRequest request = new GHRequest()
+                .addPoint(new GHPoint(48.8566, 2.3522))  // Paris
+                .addPoint(new GHPoint(48.8584, 2.2945))  // Eiffel Tower
+                .setProfile("car");
+
+        GHResponse response = graphHopper.route(request);
+
+        assertThat(response.hasErrors()).isFalse();
+        assertThat(response.getBest().getDistance()).isGreaterThan(0);
     }
 }
