@@ -1,47 +1,44 @@
 package com.service.auth;
 
-import com.service.auth.models.User;
-import com.service.auth.repositories.UserRepository;
-import com.service.auth.services.AuthService;
+import com.service.auth.model.User;
+import com.service.auth.repository.UserRepository;
 import org.junit.jupiter.api.Test;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.data.mongo.DataMongoTest;
+import org.springframework.test.context.ActiveProfiles;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.when;
+import java.util.Optional;
 
-@SpringBootTest
+import static org.assertj.core.api.Assertions.assertThat;
+
+@DataMongoTest
+@ActiveProfiles("test")
 public class AuthApplicationTests {
 
-    @Mock
+    @Autowired
     private UserRepository userRepository;
 
-    @InjectMocks
-    private AuthService authService;
-
     @Test
-    void testRegisterUser() {
-        User user = new User("testuser", "password", "testuser@example.com");
-        
-        when(userRepository.save(any(User.class))).thenReturn(user);
-        
-        ResponseEntity<?> response = authService.registerUser(user);
-        
-        assertEquals(HttpStatus.OK, response.getStatusCode());
+    public void testCreateUser() {
+        User user = new User();
+        user.setUsername("testuser");
+        user.setPassword("password123");
+        userRepository.save(user);
+
+        Optional<User> foundUser = userRepository.findByUsername("testuser");
+        assertThat(foundUser).isPresent();
+        assertThat(foundUser.get().getUsername()).isEqualTo("testuser");
     }
 
     @Test
-    void testLoginUser() {
-        User user = new User("testuser", "password", "testuser@example.com");
-        
-        when(userRepository.findByUsername("testuser")).thenReturn(java.util.Optional.of(user));
-        
-        ResponseEntity<?> response = authService.loginUser("testuser", "password");
-        
-        assertEquals(HttpStatus.OK, response.getStatusCode());
+    public void testFindUserByUsername() {
+        User user = new User();
+        user.setUsername("anotheruser");
+        user.setPassword("password456");
+        userRepository.save(user);
+
+        Optional<User> foundUser = userRepository.findByUsername("anotheruser");
+        assertThat(foundUser).isPresent();
+        assertThat(foundUser.get().getUsername()).isEqualTo("anotheruser");
     }
 }
